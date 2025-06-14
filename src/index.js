@@ -1,6 +1,7 @@
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 const tc = require('@actions/tool-cache');
+const github = require('@actions/github');
 const path = require('path');
 const fs = require('fs');
 const main = require('./main');
@@ -20,10 +21,18 @@ async function run() {
     // 1. reviewdogのセットアップ
     const reviewdogPath = await setupReviewdog();
 
-    // 2. 校閲ロジックの実行
-    const lintResults = await main.lint(targetFiles, customDictionaryPath);
+    // 2. PRで変更されたMDファイルを取得
+    const changedMdFiles = await getChangedMarkdownFiles(githubToken, targetFiles);
     
-    // 3. RDFormat JSONに変換
+    if (changedMdFiles.length === 0) {
+      core.info('PRで変更されたMarkdownファイルがありません。');
+      return;
+    }
+
+    // 3. 校閲ロジックの実行
+    const lintResults = await main.lintFiles(changedMdFiles, customDictionaryPath);
+    
+    // 4. RDFormat JSONに変換
     const rdjsonResults = formatResultsForReviewdog(lintResults);
 
     if (rdjsonResults.trim() === '') {
@@ -31,7 +40,7 @@ async function run() {
       return;
     }
 
-    // 4. reviewdogの実行
+    // 5. reviewdogの実行
     const reviewdogFlags = [
       `-reporter=${reporter}`,
       `-level=${level}`,
@@ -74,6 +83,51 @@ async function setupReviewdog() {
 
   const cachedDir = await tc.cacheFile(reviewdogBinPath, 'reviewdog', 'reviewdog', version);
   return path.join(cachedDir, 'reviewdog');
+}
+
+async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
+  const octokit = github.getOctokit(githubToken);
+  const context = github.context;
+  
+  // PRイベントでない場合は従来の動作（全ファイル対象）
+  if (context.eventName !== 'pull_request' && context.eventName !== 'pull_request_target') {
+    const glob = require('glob');
+    return glob.sync(targetFilesPattern, { 
+      ignore: ['node_modules/**', '.git/**', 'dist/**'],
+      cwd: process.env.GITHUB_WORKSPACE || process.cwd()
+    });
+  }
+  
+  try {
+    const { data: prFiles } = await octokit.rest.pulls.listFiles({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pull_number: context.payload.pull_request.number,
+    });
+    
+    // .mdファイルかつ削除されていないファイルのみフィルタ
+    const changedMdFiles = prFiles
+      .filter(file => file.filename.endsWith('.md') && file.status !== 'removed')
+      .map(file => file.filename);
+    
+    // targetFilesPatternでさらにフィルタ（globパターンマッチ）
+    const minimatch = require('minimatch');
+    const filteredFiles = changedMdFiles.filter(filename => 
+      minimatch(filename, targetFilesPattern)
+    );
+    
+    core.info(`PRで変更されたMDファイル: ${filteredFiles.join(', ')}`);
+    return filteredFiles;
+    
+  } catch (error) {
+    core.warning(`PR変更ファイル取得エラー: ${error.message}`);
+    // エラー時は従来の動作にフォールバック
+    const glob = require('glob');
+    return glob.sync(targetFilesPattern, { 
+      ignore: ['node_modules/**', '.git/**', 'dist/**'],
+      cwd: process.env.GITHUB_WORKSPACE || process.cwd()
+    });
+  }
 }
 
 function formatResultsForReviewdog(lintResults) {
