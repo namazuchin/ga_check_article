@@ -42983,9 +42983,9 @@ async function run() {
 }
 
 async function setupReviewdog() {
-  const version = '0.17.0';
+  const version = '0.20.3';
   const platform = process.platform === 'win32' ? 'windows' : (process.platform === 'darwin' ? 'darwin' : 'linux');
-  const arch = process.arch === 'x64' ? 'amd64' : 'arm64';
+  const arch = process.arch === 'x64' ? 'x86_64' : 'arm64';
   const downloadUrl = `https://github.com/reviewdog/reviewdog/releases/download/v${version}/reviewdog_${version}_${platform}_${arch}.tar.gz`;
   
   const cachedPath = tc.find('reviewdog', version);
