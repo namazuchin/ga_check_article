@@ -1,0 +1,32 @@
+name: 'Article Linter with reviewdog'
+description: 'Lints Markdown articles and reports findings via reviewdog.'
+author: 'namazu'
+
+inputs:
+  github_token:
+    description: 'GitHub token to post comments to PRs.'
+    required: true
+    default: '${{ github.token }}'
+  target_files:
+    description: 'Glob pattern for Markdown files to lint. Defaults to all .md files in the PR.'
+    required: false
+    default: '**/*.md'
+  custom_dictionary_path:
+    description: 'Path to a custom dictionary file for proper noun checking.'
+    required: false
+  reviewdog_reporter:
+    description: 'Reporter for reviewdog (e.g., github-pr-check, github-pr-review).'
+    required: false
+    default: 'github-pr-check'
+  reviewdog_level:
+    description: 'Reporting level for reviewdog (info, warning, error).'
+    required: false
+    default: 'warning'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
+
+branding:
+  icon: 'check-circle'
+  color: 'green'

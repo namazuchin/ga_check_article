@@ -1,0 +1,75 @@
+# カスタム固有名詞辞書
+# 正しい表記をキー、誤った表記を配列で指定
+
+# プログラミング言語・フレームワーク
+JavaScript:
+  - javascript
+  - Javascript
+  - JS
+TypeScript:
+  - typescript
+  - Typescript
+  - TS
+Node.js:
+  - nodejs
+  - Nodejs
+  - NodeJS
+React.js:
+  - reactjs
+  - Reactjs
+  - ReactJS
+Vue.js:
+  - vuejs
+  - Vuejs
+  - VueJS
+
+# サービス・プラットフォーム
+GitHub:
+  - github
+  - Github
+  - Git Hub
+AWS:
+  - aws
+  - Aws
+  - Amazon Web Services
+GCP:
+  - gcp
+  - Gcp
+  - Google Cloud Platform
+
+# データベース
+MySQL:
+  - mysql
+  - Mysql
+  - My SQL
+PostgreSQL:
+  - postgresql
+  - Postgresql
+  - Postgres
+Redis:
+  - redis
+
+# ツール・ライブラリ
+webpack:
+  - Webpack
+  - WebPack
+ESLint:
+  - eslint
+  - Eslint
+  - ES Lint
+Docker:
+  - docker
+Kubernetes:
+  - kubernetes
+  - k8s
+
+# OS・プラットフォーム
+iOS:
+  - ios
+  - Ios
+  - IOS
+macOS:
+  - macos
+  - Macos
+  - MacOS
+  - Mac OS
