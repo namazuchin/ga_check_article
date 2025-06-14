@@ -49407,6 +49407,10 @@ async function run() {
       return;
     }
 
+    // デバッグ用ログ
+    core.info(`校閲結果数: ${lintResults.length}`);
+    core.debug(`RDJson出力:\n${rdjsonResults}`);
+
     // 5. reviewdogの実行
     const reviewdogFlags = [
       `-reporter=${reporter}`,
@@ -49414,12 +49418,17 @@ async function run() {
       '-f=rdjson'
     ];
 
-    await exec.exec(reviewdogPath, reviewdogFlags, {
-      env: { ...process.env, REVIEWDOG_GITHUB_API_TOKEN: githubToken },
-      input: Buffer.from(rdjsonResults)
-    });
-
-    core.info('校閲処理とreviewdogによるレポートが完了しました。');
+    try {
+      await exec.exec(reviewdogPath, reviewdogFlags, {
+        env: { ...process.env, REVIEWDOG_GITHUB_API_TOKEN: githubToken },
+        input: Buffer.from(rdjsonResults)
+      });
+      core.info('校閲処理とreviewdogによるレポートが完了しました。');
+    } catch (execError) {
+      core.error(`reviewdog実行エラー: ${execError.message}`);
+      core.error(`RDJson データ: ${rdjsonResults.substring(0, 500)}...`);
+      throw execError;
+    }
 
   } catch (error) {
     core.setFailed(error.message);
@@ -49498,6 +49507,10 @@ async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
 }
 
 function formatResultsForReviewdog(lintResults) {
+  if (lintResults.length === 0) {
+    return '';
+  }
+
   return lintResults.map(result => {
     const rdjson = {
       message: result.message,
@@ -49505,14 +49518,15 @@ function formatResultsForReviewdog(lintResults) {
         path: result.filePath,
         range: {
           start: {
-            line: result.line,
-            column: result.column
+            line: result.line || 1,
+            column: result.column || 1
           }
         }
       },
-      severity: result.severity || 'WARNING'
+      severity: result.severity === 'error' ? 'ERROR' : 'WARNING'
     };
 
+    // endの範囲指定がある場合のみ追加
     if (result.endLine && result.endColumn) {
       rdjson.location.range.end = {
         line: result.endLine,
@@ -49520,18 +49534,16 @@ function formatResultsForReviewdog(lintResults) {
       };
     }
 
+    // 修正提案がある場合のみ追加
     if (result.suggestions && result.suggestions.length > 0) {
       rdjson.suggestions = result.suggestions.map(suggestion => ({
-        range: {
-          start: { line: result.line, column: result.column },
-          end: { line: result.endLine || result.line, column: result.endColumn || result.column }
-        },
+        range: rdjson.location.range,
         text: suggestion
       }));
     }
 
     return JSON.stringify(rdjson);
-  }).join('\n');
+  }).join('\n') + '\n'; // 最後に改行を追加
 }
 
 run();
