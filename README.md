@@ -1,6 +1,6 @@
 # 技術記事校閲Action
 
-GitHub Actionsで動作するMarkdown形式の技術ブログ記事校閲ツールです。Pull Requestに対して自動的に校閲を実行し、reviewdogを通じてフィードバックを提供します。
+GitHub Actionsで動作するMarkdown形式の技術ブログ記事校閲ツールです。Pull Requestに対して自動的に校閲を実行し、reviewdog（コードレビュー自動化ツール）を通じてフィードバックを提供します。
 
 ## 機能
 
@@ -31,14 +31,14 @@ jobs:
         target_files: 'articles/**/*.md'
 ```
 
-### パラメータ
+### パラメーター
 
-| パラメータ | 必須 | デフォルト | 説明 |
+| パラメーター | 必須 | デフォルト | 説明 |
 |-----------|------|-----------|------|
 | `github_token` | Yes | `${{ github.token }}` | GitHub API アクセス用トークン |
 | `target_files` | No | `**/*.md` | 校閲対象のファイルパターン |
 | `custom_dictionary_path` | No | - | カスタム辞書ファイルのパス |
-| `reviewdog_reporter` | No | `github-pr-check` | reviewdogのレポーター設定 |
+| `reviewdog_reporter` | No | `github-pr-check` | reviewdog（コードレビュー自動化ツール）のレポーター設定 |
 | `reviewdog_level` | No | `warning` | 報告レベル (info/warning/error) |
 
 ### カスタム辞書
