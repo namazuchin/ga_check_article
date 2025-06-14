@@ -49462,7 +49462,6 @@ async function setupReviewdog() {
 }
 
 async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
-  const octokit = github.getOctokit(githubToken);
   const context = github.context;
   
   // PRイベントでない場合は従来の動作（全ファイル対象）
@@ -49475,16 +49474,25 @@ async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
   }
   
   try {
-    const { data: prFiles } = await octokit.rest.pulls.listFiles({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      pull_number: context.payload.pull_request.number,
-    });
+    // GitHub APIの代わりにgitコマンドを使用してPRの変更ファイルを取得
+    let baseRef = 'origin/main';
     
-    // .mdファイルかつ削除されていないファイルのみフィルタ
-    const changedMdFiles = prFiles
-      .filter(file => file.filename.endsWith('.md') && file.status !== 'removed')
-      .map(file => file.filename);
+    // PR情報からベースブランチを取得
+    if (context.payload.pull_request?.base?.ref) {
+      baseRef = `origin/${context.payload.pull_request.base.ref}`;
+    }
+    
+    // gitコマンドで変更されたファイルを取得
+    const { stdout } = await exec.getExecOutput('git', [
+      'diff', '--name-only', '--diff-filter=d', baseRef
+    ]);
+    
+    const changedFiles = stdout.trim().split('\n').filter(file => file);
+    
+    // .mdファイルのみフィルタ
+    const changedMdFiles = changedFiles.filter(file => 
+      file.endsWith('.md')
+    );
     
     // targetFilesPatternでさらにフィルタ（globパターンマッチ）
     const minimatch = __nccwpck_require__(6507);
