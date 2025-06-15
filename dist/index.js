@@ -49409,7 +49409,21 @@ async function run() {
 
     // デバッグ用ログ
     core.info(`校閲結果数: ${lintResults.length}`);
-    core.debug(`RDJson出力:\n${rdjsonResults}`);
+    
+    // RDJson出力の詳細をログ出力（先頭の2行のみ）
+    const lines = rdjsonResults.split('\n');
+    core.info(`RDJson形式確認 (最初の2行):`);
+    lines.slice(0, 2).forEach((line, index) => {
+      if (line.trim()) {
+        core.info(`Line ${index + 1}: ${line}`);
+        try {
+          const parsed = JSON.parse(line);
+          core.info(`Line ${index + 1} parsed successfully: ${JSON.stringify(parsed, null, 2)}`);
+        } catch (e) {
+          core.error(`Line ${index + 1} JSON parse error: ${e.message}`);
+        }
+      }
+    });
 
     // 5. reviewdogの実行
     const reviewdogFlags = [
@@ -49519,15 +49533,15 @@ function formatResultsForReviewdog(lintResults) {
     return '';
   }
 
-  return lintResults.map(result => {
-    const rdjson = {
-      message: result.message,
+  const rdjsonLines = lintResults.map(result => {
+    const diagnostic = {
+      message: result.message || '',
       location: {
-        path: result.filePath,
+        path: result.filePath || '',
         range: {
           start: {
-            line: result.line || 1,
-            column: result.column || 1
+            line: parseInt(result.line) || 1,
+            column: parseInt(result.column) || 1
           }
         }
       },
@@ -49536,22 +49550,18 @@ function formatResultsForReviewdog(lintResults) {
 
     // endの範囲指定がある場合のみ追加
     if (result.endLine && result.endColumn) {
-      rdjson.location.range.end = {
-        line: result.endLine,
-        column: result.endColumn
+      diagnostic.location.range.end = {
+        line: parseInt(result.endLine),
+        column: parseInt(result.endColumn)
       };
     }
 
-    // 修正提案がある場合のみ追加
-    if (result.suggestions && result.suggestions.length > 0) {
-      rdjson.suggestions = result.suggestions.map(suggestion => ({
-        range: rdjson.location.range,
-        text: suggestion
-      }));
-    }
+    // 修正提案は別のdiagnosticとして送信（reviewdogの制限回避）
+    return JSON.stringify(diagnostic);
+  });
 
-    return JSON.stringify(rdjson);
-  }).join('\n') + '\n'; // 最後に改行を追加
+  // JSON Lines形式で返す（各行が1つのJSON）
+  return rdjsonLines.join('\n');
 }
 
 run();
