@@ -128,21 +128,36 @@ async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
     });
   }
   
+  // PRイベントの場合、環境変数からファイルリストを取得
+  core.info(`GitHub Event: ${context.eventName}`);
+  core.info(`PR Number: ${context.payload.pull_request?.number}`);
+  
   try {
-    // GitHub APIの代わりにgitコマンドを使用してPRの変更ファイルを取得
-    let baseRef = 'origin/main';
+    // GitHub Actionsの環境では、actions/checkout@v4で変更ファイルを取得
+    let changedFiles = [];
     
-    // PR情報からベースブランチを取得
-    if (context.payload.pull_request?.base?.ref) {
-      baseRef = `origin/${context.payload.pull_request.base.ref}`;
+    // 方法1: git diff-treeを使用（より確実）
+    const headSha = context.payload.pull_request?.head?.sha;
+    const baseSha = context.payload.pull_request?.base?.sha;
+    
+    if (headSha && baseSha) {
+      core.info(`Head SHA: ${headSha}, Base SHA: ${baseSha}`);
+      
+      const { stdout } = await exec.getExecOutput('git', [
+        'diff-tree', '--no-commit-id', '--name-only', '-r', baseSha, headSha
+      ]);
+      
+      changedFiles = stdout.trim().split('\n').filter(file => file);
+    } else {
+      // 方法2: git diff HEADを使用
+      const { stdout } = await exec.getExecOutput('git', [
+        'diff', '--name-only', 'HEAD~1', 'HEAD'
+      ]);
+      
+      changedFiles = stdout.trim().split('\n').filter(file => file);
     }
     
-    // gitコマンドで変更されたファイルを取得
-    const { stdout } = await exec.getExecOutput('git', [
-      'diff', '--name-only', '--diff-filter=d', baseRef
-    ]);
-    
-    const changedFiles = stdout.trim().split('\n').filter(file => file);
+    core.info(`Git diff結果: ${changedFiles.join(', ')}`);
     
     // .mdファイルのみフィルタ
     const changedMdFiles = changedFiles.filter(file => 
@@ -155,17 +170,21 @@ async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
       minimatch(filename, targetFilesPattern)
     );
     
+    if (filteredFiles.length === 0) {
+      core.info('PRで変更されたMDファイルがありません。');
+      return [];
+    }
+    
     core.info(`PRで変更されたMDファイル: ${filteredFiles.join(', ')}`);
     return filteredFiles;
     
   } catch (error) {
-    core.warning(`PR変更ファイル取得エラー: ${error.message}`);
-    // エラー時は従来の動作にフォールバック
-    const glob = require('glob');
-    return glob.sync(targetFilesPattern, { 
-      ignore: ['node_modules/**', '.git/**', 'dist/**'],
-      cwd: process.env.GITHUB_WORKSPACE || process.cwd()
-    });
+    core.error(`PR変更ファイル取得エラー: ${error.message}`);
+    core.error(`Error stack: ${error.stack}`);
+    
+    // エラー時は空配列を返す（全ファイル校閲を避ける）
+    core.warning('PR変更ファイル取得に失敗したため、校閲をスキップします。');
+    return [];
   }
 }
 
