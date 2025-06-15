@@ -133,31 +133,67 @@ async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
   core.info(`PR Number: ${context.payload.pull_request?.number}`);
   
   try {
-    // GitHub Actionsの環境では、actions/checkout@v4で変更ファイルを取得
     let changedFiles = [];
     
-    // 方法1: git diff-treeを使用（より確実）
-    const headSha = context.payload.pull_request?.head?.sha;
-    const baseSha = context.payload.pull_request?.base?.sha;
-    
-    if (headSha && baseSha) {
-      core.info(`Head SHA: ${headSha}, Base SHA: ${baseSha}`);
+    // 方法1: GitHub APIを使用（権限があれば）
+    try {
+      const octokit = github.getOctokit(githubToken);
+      const { data: prFiles } = await octokit.rest.pulls.listFiles({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        pull_number: context.payload.pull_request.number,
+      });
       
-      const { stdout } = await exec.getExecOutput('git', [
-        'diff-tree', '--no-commit-id', '--name-only', '-r', baseSha, headSha
-      ]);
+      changedFiles = prFiles
+        .filter(file => file.status !== 'removed')
+        .map(file => file.filename);
       
-      changedFiles = stdout.trim().split('\n').filter(file => file);
-    } else {
-      // 方法2: git diff HEADを使用
-      const { stdout } = await exec.getExecOutput('git', [
-        'diff', '--name-only', 'HEAD~1', 'HEAD'
-      ]);
+      core.info(`GitHub APIで取得した変更ファイル: ${changedFiles.join(', ')}`);
       
-      changedFiles = stdout.trim().split('\n').filter(file => file);
+    } catch (apiError) {
+      core.warning(`GitHub API使用失敗: ${apiError.message}`);
+      
+      // 方法2: Gitのmaintaining状況を確認してから実行
+      try {
+        // まずgit statusで状態確認
+        await exec.getExecOutput('git', ['status', '--porcelain']);
+        
+        // git fetchで最新を取得
+        await exec.getExecOutput('git', ['fetch', 'origin']);
+        
+        // PRのベースブランチとの差分を取得
+        const baseRef = context.payload.pull_request?.base?.ref || 'main';
+        const { stdout } = await exec.getExecOutput('git', [
+          'diff', '--name-only', `origin/${baseRef}...HEAD`
+        ]);
+        
+        changedFiles = stdout.trim().split('\n').filter(file => file);
+        core.info(`Git diffで取得した変更ファイル: ${changedFiles.join(', ')}`);
+        
+      } catch (gitError) {
+        core.warning(`Git操作も失敗: ${gitError.message}`);
+        
+        // 方法3: 最後の手段として環境変数やGitHub Actionsの情報を使用
+        // GITHUB_EVENT_PATHからPR情報を読み取り
+        const eventPath = process.env.GITHUB_EVENT_PATH;
+        if (eventPath && fs.existsSync(eventPath)) {
+          const eventData = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+          core.info(`イベントデータから情報取得を試行`);
+          
+          // 単純にgit logから最新のコミットの変更ファイルを取得
+          try {
+            const { stdout } = await exec.getExecOutput('git', [
+              'show', '--pretty=format:', '--name-only'
+            ]);
+            changedFiles = stdout.trim().split('\n').filter(file => file);
+            core.info(`Git showで取得した変更ファイル: ${changedFiles.join(', ')}`);
+          } catch (showError) {
+            core.error(`全ての方法が失敗しました: ${showError.message}`);
+            return [];
+          }
+        }
+      }
     }
-    
-    core.info(`Git diff結果: ${changedFiles.join(', ')}`);
     
     // .mdファイルのみフィルタ
     const changedMdFiles = changedFiles.filter(file => 
