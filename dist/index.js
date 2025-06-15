@@ -49433,10 +49433,18 @@ async function run() {
     ];
 
     try {
-      await exec.exec(reviewdogPath, reviewdogFlags, {
+      // rdjsonlフォーマット（JSON Lines）を使用してみる
+      const reviewdogFlagsJsonl = [
+        `-reporter=${reporter}`,
+        `-level=${level}`,
+        '-f=rdjsonl'  // rdjsonlに変更
+      ];
+
+      await exec.exec(reviewdogPath, reviewdogFlagsJsonl, {
         env: { ...process.env, REVIEWDOG_GITHUB_API_TOKEN: githubToken },
-        input: Buffer.from(rdjsonResults)
+        input: Buffer.from(rdjsonResults + '\n') // 末尾に改行を追加
       });
+      
       core.info('校閲処理とreviewdogによるレポートが完了しました。');
     } catch (execError) {
       core.error(`reviewdog実行エラー: ${execError.message}`);
@@ -49556,11 +49564,17 @@ function formatResultsForReviewdog(lintResults) {
       };
     }
 
-    // 修正提案は別のdiagnosticとして送信（reviewdogの制限回避）
-    return JSON.stringify(diagnostic);
-  });
+    // sourceフィールドを追加（reviewdogの期待する形式）
+    if (result.ruleId || result.rule) {
+      diagnostic.source = {
+        name: result.ruleId || result.rule || 'lint'
+      };
+    }
 
-  // JSON Lines形式で返す（各行が1つのJSON）
+    return JSON.stringify(diagnostic);
+  }).filter(line => line); // 空行を除去
+
+  // JSON Lines形式で返す（各行が1つのJSON、末尾に改行なし）
   return rdjsonLines.join('\n');
 }
 
