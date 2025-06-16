@@ -2,37 +2,6 @@ const { createLintResult, extractTextFromMarkdown, getLineAndColumn } = require(
 
 // 一般的な技術用語の誤記チェック
 const commonTypos = {
-  'Javascript': 'JavaScript',
-  'javascript': 'JavaScript',
-  'Github': 'GitHub',
-  'github': 'GitHub',
-  'Nodejs': 'Node.js',
-  'nodejs': 'Node.js',
-  'Reactjs': 'React.js',
-  'reactjs': 'React.js',
-  'Vuejs': 'Vue.js',
-  'vuejs': 'Vue.js',
-  'Typescript': 'TypeScript',
-  'typescript': 'TypeScript',
-  'Html': 'HTML',
-  'Css': 'CSS',
-  'Api': 'API',
-  'Url': 'URL',
-  'Json': 'JSON',
-  'Xml': 'XML',
-  'Sql': 'SQL',
-  'Aws': 'AWS',
-  'Gcp': 'GCP',
-  'Ios': 'iOS',
-  'Macos': 'macOS',
-  'Mysql': 'MySQL',
-  'Postgresql': 'PostgreSQL',
-  'Redis': 'Redis',
-  'Docker': 'Docker',
-  'Kubernetes': 'Kubernetes',
-  'Webpack': 'webpack',
-  'Eslint': 'ESLint',
-  'Prettier': 'Prettier'
 };
 
 // よくある日本語の誤記
