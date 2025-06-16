@@ -49372,6 +49372,8 @@ const github = __nccwpck_require__(3228);
 const path = __nccwpck_require__(6928);
 const fs = __nccwpck_require__(9896);
 const main = __nccwpck_require__(7936);
+const glob = __nccwpck_require__(1363);
+const { minimatch } = __nccwpck_require__(6507);
 
 async function run() {
   try {
@@ -49488,7 +49490,6 @@ async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
   
   // PRイベントでない場合は従来の動作（全ファイル対象）
   if (context.eventName !== 'pull_request' && context.eventName !== 'pull_request_target') {
-    const glob = __nccwpck_require__(1363);
     return glob.sync(targetFilesPattern, { 
       ignore: ['node_modules/**', '.git/**', 'dist/**'],
       cwd: process.env.GITHUB_WORKSPACE || process.cwd()
@@ -49568,7 +49569,6 @@ async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
     );
     
     // targetFilesPatternでさらにフィルタ（globパターンマッチ）
-    const minimatch = __nccwpck_require__(6507);
     const filteredFiles = changedMdFiles.filter(filename => 
       minimatch(filename, targetFilesPattern)
     );
@@ -49634,6 +49634,7 @@ function formatResultsForReviewdog(lintResults) {
 }
 
 run();
+
 module.exports = __webpack_exports__;
 /******/ })()
 ;
