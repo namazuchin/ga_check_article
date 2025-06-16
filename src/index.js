@@ -5,6 +5,8 @@ const github = require('@actions/github');
 const path = require('path');
 const fs = require('fs');
 const main = require('./main');
+const glob = require('glob');
+const { minimatch } = require('minimatch');
 
 async function run() {
   try {
@@ -121,7 +123,6 @@ async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
   
   // PRイベントでない場合は従来の動作（全ファイル対象）
   if (context.eventName !== 'pull_request' && context.eventName !== 'pull_request_target') {
-    const glob = require('glob');
     return glob.sync(targetFilesPattern, { 
       ignore: ['node_modules/**', '.git/**', 'dist/**'],
       cwd: process.env.GITHUB_WORKSPACE || process.cwd()
@@ -201,7 +202,6 @@ async function getChangedMarkdownFiles(githubToken, targetFilesPattern) {
     );
     
     // targetFilesPatternでさらにフィルタ（globパターンマッチ）
-    const minimatch = require('minimatch');
     const filteredFiles = changedMdFiles.filter(filename => 
       minimatch(filename, targetFilesPattern)
     );

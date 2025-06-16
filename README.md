@@ -23,11 +23,14 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
     - uses: actions/checkout@v4
     - uses: namazuchin/ga_check_article@v1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ github.token }}
         target_files: 'articles/**/*.md'
 ```
 
@@ -35,7 +38,7 @@ jobs:
 
 | パラメーター | 必須 | デフォルト | 説明 |
 |-----------|------|-----------|------|
-| `github_token` | Yes | `${{ github.token }}` | GitHub API アクセス用トークン |
+| `github_token` | No | `${{ github.token }}` | GitHub API アクセス用トークン |
 | `target_files` | No | `**/*.md` | 校閲対象のファイルパターン |
 | `custom_dictionary_path` | No | - | カスタム辞書ファイルのパス |
 | `reviewdog_reporter` | No | `github-pr-check` | reviewdog（コードレビュー自動化ツール）のレポーター設定 |
