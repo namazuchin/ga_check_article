@@ -61,7 +61,7 @@ async function check(filePath, content, customDictionaryPath) {
         filePath,
         pos.line,
         pos.column,
-        `「${incorrect}」の表記ゆれです。「${correct}」を推奨します。`,
+        `「${incorrect}」は「${correct}」の誤記の可能性があります。`,
         'WARNING',
         pos.line,
         pos.column + incorrect.length,
